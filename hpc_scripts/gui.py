@@ -72,7 +72,7 @@ def pipeline_widget(
                     display_unprocessed_sessions: bool = False,
                     atlas: str = "allen_mouse_10um",
                     module_strings= [],
-
+                    generic_python_script: bool = False,
 
 ):
 

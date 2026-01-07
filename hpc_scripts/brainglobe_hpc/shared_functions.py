@@ -6,6 +6,11 @@ def load_experiment_directories(rawdata_dir):
     return paths
 
 
+def load_session_directories(rawdata_dir):
+    paths = list(Path(rawdata_dir).rglob("ses*"))
+    return paths
+
+
 def voxel_sizes(recipe_path):
     import yaml
 
@@ -32,8 +37,14 @@ def array_script_template(path_to_commands_ceph_remote_root="/ceph/margrie/slenz
                           output_file_name="brainreg",
                           time_limit="3-0:0",
                           memory_limit=60,
-                          module_strings=["brainglobe/2024-03-01",]
+                          module_strings=["brainglobe/2024-03-01",],
+                          additional_commands=["",],
+                          conda_environment_strings=["",],
                           ):
+
+    module_loads = "\n".join([f"module load {x}" for x in module_strings])
+    extra_cmds = "\n".join([f"{x}" for x in additional_commands])
+    conda_cmds = "\n".join([f"conda activate {x}" for x in conda_environment_strings])
 
     template= f"""#!/bin/bash
 #
@@ -48,8 +59,10 @@ def array_script_template(path_to_commands_ceph_remote_root="/ceph/margrie/slenz
 #SBATCH --mail-user={user_email}
 #SBATCH --array=0-{n_jobs}%{n_jobs_at_a_time}
 
-echo "Loading Brainglobe module"
-{"".join([f"module load {x}\n" for x in module_strings])}
+echo "Loading modules"
+{module_loads}
+{conda_cmds}
+{extra_cmds}
 
 cmd=$(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" {path_to_commands_ceph_remote_root})
 
@@ -57,6 +70,50 @@ echo "Running command: $cmd"
 eval $cmd
 """
     return template
+
+
+# def array_script_template_deeplabcut(path_to_commands_ceph_remote_root="/ceph/margrie/slenzi/batch_scripts/commands.txt",
+#                           n_jobs=10,
+#                           n_jobs_at_a_time=4,
+#                           user_email="ucqfsle@ucl.ac.uk",
+#                           output_file_name="deeplabcut",
+#                           time_limit="3-0:0",
+#                           memory_limit=60,
+#                           module_strings=["deeplabcut/2022-07-06",]
+#                           ):
+
+#     template= f"""#!/bin/bash
+# #
+# #SBATCH -p gpu # partition (queue)
+# #SBATCH -N 1   # number of nodes
+# #SBATCH --mem {memory_limit}G # memory pool for all cores
+# #SBATCH --gres=gpu:1
+# #SBATCH -t {time_limit}
+# #SBATCH -o logs/output_{output_file_name}_%A_%a.out
+# #SBATCH -e logs/error_{output_file_name}_%A_%a.err
+# #SBATCH --mail-type=ALL
+# #SBATCH --mail-user={user_email}
+# #SBATCH --array=0-{n_jobs}%{n_jobs_at_a_time}
+
+# echo "Loading modules"
+# {"".join([f"module load {x}\n" for x in module_strings])}
+
+# cmd=$(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" {path_to_commands_ceph_remote_root})
+
+# echo "Running command: $cmd"
+# eval $cmd
+# """
+#     return template
+
+
+
+def load_session_directories(rawdata_directory):
+    if rawdata_directory is None:
+        print("No directory selected")
+        return
+    paths = list(Path(rawdata_directory).rglob("ses*"))
+    session_directories=[path for path in paths if path.is_dir()]
+    return session_directories
 
 
 def merge_paths_to_linux_path(base_path, other_path):
